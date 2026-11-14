@@ -16,6 +16,11 @@ Usage:
                        --eval bird_data/secplus_eval.jsonl --gguf
   python bird_train.py --eval-only --adapter bird-lora      # score a saved adapter
   python bird_train.py --check-data --data ...                # validate files, no GPU needed
+
+v3 (Qwen3-4B-Instruct-2507, multi-format log data):
+  python bird_train.py --data bird_train_clean.jsonl bird_data/train_run2/secplus_train.jsonl bird_data/logs_v3.jsonl \
+      --eval bird_data/eval_run/secplus_eval.jsonl --base-model unsloth/Qwen3-4B-Instruct-2507 --chat-template native \
+      --max-seq-len 4096 --batch-size 1 --grad-accum 16 --epochs 1 --adapter bird-v3-lora --gguf
 """
 
 from __future__ import annotations
@@ -151,7 +156,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--eval-limit", type=int, default=300)
     p.add_argument("--base-model", default="unsloth/Qwen2.5-1.5B-Instruct",
                    help="e.g. unsloth/Qwen2.5-3B-Instruct for more knowledge if the GPU has 12GB+")
-    p.add_argument("--chat-template", default="qwen-2.5")
+    p.add_argument("--chat-template", default="qwen-2.5",
+                   help="Unsloth template name, or 'native' to keep the model's own (use native for Qwen3-*-Instruct-2507)")
     p.add_argument("--max-seq-len", type=int, default=2048)
     p.add_argument("--max-per-file", type=int, default=None, help="cap conversations taken from each file")
     p.add_argument("--epochs", type=float, default=2)
@@ -184,7 +190,8 @@ def main(argv: list[str] | None = None) -> int:
     model_name = a.adapter if a.eval_only else a.base_model
     model, tokenizer = FastLanguageModel.from_pretrained(model_name=model_name, max_seq_length=a.max_seq_len,
                                                          load_in_4bit=True, dtype=None)
-    tokenizer = get_chat_template(tokenizer, chat_template=a.chat_template)
+    if a.chat_template != "native":
+        tokenizer = get_chat_template(tokenizer, chat_template=a.chat_template)
 
     if a.eval_only:
         if not mcq:

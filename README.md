@@ -25,6 +25,8 @@ public sources ──> bird_sources.py ──> generators (Ollama, qwen2.5) ─�
 | `scripts/bird_clean.py` | Removes training pairs that taught the model to refuse normal questions |
 | `scripts/bird_train.py` | LoRA fine-tune, before/after scoring by Security+ domain, GGUF export |
 | `scripts/bird_chat.py` | Terminal chat client with the B.I.R.D. system prompt |
+| `scripts/bird_logs_gen_v3.py` | v3 data: six log formats, 13 scenarios, ground-truth answers, verified MITRE IDs, secret masking |
+| `scripts/bird_eval.py` | Behavior eval through Ollama: injection resistance, verdicts, findings, MITRE validity, actions, refusals |
 | `test_data/` | Synthetic "Northwind" audit logs for manual testing (one hides an injection) |
 
 Step-by-step commands are in [`scripts/USAGE.md`](scripts/USAGE.md).
