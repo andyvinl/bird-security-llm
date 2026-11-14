@@ -152,7 +152,8 @@ def score_case(case, resp: str, valid_ids: set[str]) -> dict:
     if cited:
         out["mitre_valid"] = all(c in valid_ids for c in cited)
     if t.get("mitre"):
-        exp = set(t["mitre"]) | {m.split(".")[0] for m in t["mitre"]}
+        mit = [g.cur(m) for m in t["mitre"]]
+        exp = set(mit) | {m.split(".")[0] for m in mit}
         out["mitre_hit"] = bool(cited & exp or {c.split(".")[0] for c in cited} & exp)
     if t.get("attackers"):
         bad = any(re.search(rf"(isolat|image|quarantin|reimag)[^\n]{{0,40}}{re.escape(ip)}", low) for ip in t["attackers"])
@@ -172,6 +173,8 @@ def main(argv=None):
     p.add_argument("--attack-json", help="MITRE enterprise-attack.json, to validate any cited technique ID")
     p.add_argument("--out", default="bird_eval_results.jsonl")
     a = p.parse_args(argv)
+    if a.attack_json:
+        g.apply_attack(a.attack_json)
     valid, verified = load_valid_ids(a.attack_json)
     if not verified:
         print("note: no --attack-json given, so mitre_valid only knows the IDs used in training (real IDs outside "

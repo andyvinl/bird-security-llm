@@ -30,6 +30,7 @@ import argparse
 import datetime as dt
 import json
 import random
+import re
 import string
 import sys
 
@@ -74,24 +75,68 @@ MITRE = {
 }
 
 
+REMAP: dict[str, str] = {}   # old (revoked) ID -> current ID, filled by apply_attack()
+
+
+def cur(i: str) -> str:
+    return REMAP.get(i, i)
+
+
 def mitre_line(ids):
-    return "; ".join(f"{i} {MITRE[i]}" for i in ids)
+    seen, out = set(), []
+    for i in ids:
+        c = cur(i)
+        if c not in seen:
+            seen.add(c)
+            out.append(f"{c} {MITRE[c]}")
+    return "; ".join(out)
 
 
-def check_mitre_against(path: str) -> None:
-    """Fail loudly if any ID in MITRE is not an active technique in MITRE's enterprise-attack.json."""
+def apply_attack(path: str, quiet: bool = False) -> None:
+    """Sync MITRE with MITRE's enterprise-attack.json: follow 'revoked-by' links to current IDs and use
+    current names. Exits if an ID is deprecated with no replacement."""
     with open(path, encoding="utf-8") as f:
-        bundle = json.load(f)
-    valid = set()
-    for o in bundle.get("objects", []):
-        if o.get("type") == "attack-pattern" and not o.get("revoked") and not o.get("x_mitre_deprecated"):
-            for ref in o.get("external_references", []):
-                if ref.get("source_name") == "mitre-attack" and ref.get("external_id", "").startswith("T"):
-                    valid.add(ref["external_id"])
-    bad = [i for i in MITRE if i not in valid]
-    if bad:
-        sys.exit(f"ERROR: these MITRE IDs are not active in {path}: {bad}")
-    print(f"MITRE check passed: all {len(MITRE)} IDs are active techniques.")
+        objs = json.load(f).get("objects", [])
+    by_stix, by_ext = {}, {}
+    for o in objs:
+        if o.get("type") == "attack-pattern":
+            ext = next((r["external_id"] for r in o.get("external_references", [])
+                        if r.get("source_name") == "mitre-attack"), None)
+            if ext:
+                by_stix[o["id"]] = (ext, o)
+                by_ext[ext] = o
+    revoked_by = {o["source_ref"]: o["target_ref"] for o in objs
+                  if o.get("type") == "relationship" and o.get("relationship_type") == "revoked-by"}
+
+    def full_name(ext):
+        o = by_ext[ext]
+        if "." in ext and ext.split(".")[0] in by_ext:
+            return f"{by_ext[ext.split('.')[0]]['name']}: {o['name']}"
+        return o["name"]
+
+    problems = []
+    for old in list(MITRE):
+        if old not in by_ext:
+            problems.append(f"{old} not found")
+            continue
+        new, hops = old, 0
+        while by_ext[new].get("revoked") and hops < 5:
+            nxt = revoked_by.get(by_ext[new]["id"])
+            if not nxt or nxt not in by_stix:
+                break
+            new, hops = by_stix[nxt][0], hops + 1
+        if by_ext[new].get("revoked") or by_ext[new].get("x_mitre_deprecated"):
+            problems.append(f"{old} is revoked/deprecated with no current replacement")
+            continue
+        if new != old:
+            REMAP[old] = new
+            del MITRE[old]
+        MITRE[new] = full_name(new)
+    if problems:
+        sys.exit("ERROR in MITRE table: " + "; ".join(problems))
+    if not quiet:
+        print(f"MITRE synced with {path}: {len(MITRE)} techniques"
+              + (", updated " + ", ".join(f"{k}->{v}" for k, v in REMAP.items()) if REMAP else ", no changes"))
 
 
 # --------------------------------------------------------------------------- #
@@ -1124,6 +1169,7 @@ def anchors(rng: random.Random, copies: int):
     out = []
     for _ in range(copies):
         for q, a in HELPFUL + REFUSE:
+            a = re.sub(r"\bT\d{4}(?:\.\d{3})?\b", lambda m: cur(m.group()), a)
             qq = q if rng.random() < 0.6 else rng.choice(["", "quick question: ", "hey, ", "For my job: "]) + q[0].lower() + q[1:]
             out.append({"messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": qq},
                                      {"role": "assistant", "content": a}],
@@ -1143,7 +1189,7 @@ def main(argv=None):
     p.add_argument("--show", type=int, default=0, help="print N samples and exit")
     a = p.parse_args(argv)
     if a.attack_json:
-        check_mitre_against(a.attack_json)
+        apply_attack(a.attack_json)
     rng = random.Random(a.seed)
     if a.show:
         for _ in range(a.show):
