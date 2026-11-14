@@ -61,14 +61,14 @@ the dataset, publish it under the same license.
 ## v3: multi-format logs + behavior eval
 ```bash
 # on the GPU box (Ollama running), from ~/bird
-python bird_logs_gen_v3.py --attack-json bird_data/raw/attack.json -n 2400 -o bird_data/logs_v3.jsonl
-python bird_eval.py --models bird --attack-json bird_data/raw/attack.json --out eval_v2.jsonl   # baseline
+python bird_logs_gen_v3.py --attack-json bird_data/raw/attack/enterprise-attack.json -n 2400 -o bird_data/logs_v3.jsonl
+python bird_eval.py --models bird --attack-json bird_data/raw/attack/enterprise-attack.json --out eval_v2.jsonl   # baseline
 python bird_train.py --data bird_train_clean.jsonl bird_data/train_run2/secplus_train.jsonl bird_data/logs_v3.jsonl \
   --eval bird_data/eval_run/secplus_eval.jsonl --base-model unsloth/Qwen3-4B-Instruct-2507 --chat-template native \
   --max-seq-len 4096 --batch-size 1 --grad-accum 16 --epochs 1 --adapter bird-v3-lora --gguf
 # put Modelfile.v3 next to the exported GGUF, then:
 ollama create bird-v3 -f Modelfile.v3
-python bird_eval.py --models bird bird-v3 --attack-json bird_data/raw/attack.json --out eval_v3.jsonl
+python bird_eval.py --models bird bird-v3 --attack-json bird_data/raw/attack/enterprise-attack.json --out eval_v3.jsonl
 ```
 `bird_eval.py` scores verdicts, injection resistance, key findings, MITRE ID validity, block-vs-isolate actions,
 secret masking, over-refusal and refusal of harmful requests on held-out cases (different seed, prompts and

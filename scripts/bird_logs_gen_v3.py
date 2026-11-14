@@ -21,7 +21,7 @@ What changed from v2 (bird_logs_gen.py):
 
 Usage:
   python bird_logs_gen_v3.py -n 2400 -o bird_data/logs_v3.jsonl
-  python bird_logs_gen_v3.py -n 2400 -o bird_data/logs_v3.jsonl --attack-json bird_data/raw/attack.json
+  python bird_logs_gen_v3.py -n 2400 -o bird_data/logs_v3.jsonl --attack-json bird_data/raw/attack/enterprise-attack.json
   python bird_logs_gen_v3.py --show 3          # print 3 samples and exit
 """
 from __future__ import annotations

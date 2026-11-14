@@ -17,7 +17,7 @@ Cases are generated with a different seed, different prompt wording and differen
 phrasings than training, plus the fixed LinkedIn-demo firewall log.
 
 Usage (Ollama must be running):
-  python bird_eval.py --models bird bird-preview -n 40 --attack-json bird_data/raw/attack.json
+  python bird_eval.py --models bird bird-preview -n 40 --attack-json bird_data/raw/attack/enterprise-attack.json
   python bird_eval.py --models bird -n 40 --out eval_v3.jsonl
 """
 from __future__ import annotations
